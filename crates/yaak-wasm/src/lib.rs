@@ -576,8 +576,10 @@ pub async fn prepare_http_send(payload: JsValue) -> Result<JsValue> {
     // request sent without the auth it asked for is worse than one refused with the reason.
     let auth_disabled =
         rendered.authentication.get("disabled").and_then(|v| v.as_bool()) == Some(true);
+    // [shaman] CORE-454: the cross-service token needs no plugin; the send server mints it.
     if let Some(auth_type) = rendered.authentication_type.as_deref()
         && auth_type != "none"
+        && auth_type != yaak_crossservice_auth::AUTH_NAME
         && !auth_disabled
     {
         return Err(js_error(format!(

@@ -1,0 +1,60 @@
+[
+  {
+    "type": "text",
+    "name": "company",
+    "label": "Company URL name",
+    "placeholder": "demo",
+    "description": "The tenant the token is for. Sent as CompanyUrlName and as the company claim."
+  },
+  {
+    "type": "text",
+    "name": "kid",
+    "label": "Key id",
+    "placeholder": "go-core-2026-07",
+    "description": "The kid of the key in the service's keyring (CROSS_SERVICE_KEYRING_*)."
+  },
+  {
+    "type": "text",
+    "name": "secret",
+    "label": "Secret",
+    "password": true,
+    "description": "The key from the keyring, base64 as stored in SSM. Untick the box below for a plain-text secret."
+  },
+  {
+    "type": "checkbox",
+    "name": "secretBase64",
+    "label": "Secret is base64",
+    "defaultValue": "true"
+  },
+  {
+    "type": "text",
+    "name": "audience",
+    "label": "Audience",
+    "defaultValue": "go-core",
+    "optional": true,
+    "description": "The service that verifies the token (aud): go-core, ai-api, sync-api."
+  },
+  {
+    "type": "text",
+    "name": "ttl",
+    "label": "Lifetime (seconds)",
+    "defaultValue": "90",
+    "optional": true
+  },
+  {
+    "type": "text",
+    "name": "actSub",
+    "label": "Act as user id",
+    "placeholder": "42",
+    "optional": true,
+    "description": "Numeric user id to impersonate (act.sub). Leave empty for a service call."
+  },
+  {
+    "type": "text",
+    "name": "subject",
+    "label": "Subject",
+    "defaultValue": "yaak",
+    "optional": true,
+    "description": "The calling service's name (sub). Informational."
+  }
+]

@@ -20,7 +20,7 @@ use yaak_http::client::{HttpConnectionOptions, HttpConnectionProxySetting};
 use yaak_http::cookies::CookieStore;
 use yaak_http::sender::{HttpResponseEvent, ReqwestSender};
 use yaak_http::transaction::HttpTransaction;
-use yaak_http::types::{SendableHttpRequest, SendableHttpRequestOptions};
+use yaak_http::types::{SendableBody, SendableHttpRequest, SendableHttpRequestOptions};
 use yaak_models::models::HttpResponseHeader;
 
 /// How many frames may sit unread by the client before body reading pauses. Backpressure, so a
@@ -49,6 +49,39 @@ pub enum Refusal {
 }
 
 pub type FrameSender = mpsc::Sender<Result<Bytes, Infallible>>;
+
+/// [shaman] CORE-454: `Authorization` for a request whose auth is the native cross-service
+/// token. Any other auth type passes through untouched.
+fn apply_cross_service_token(
+    mut sendable: SendableHttpRequest,
+    authentication_type: &Option<String>,
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+) -> Result<SendableHttpRequest, Refusal> {
+    if authentication_type.as_deref() != Some(yaak_crossservice_auth::AUTH_NAME)
+        || yaak_crossservice_auth::is_disabled(values)
+    {
+        return Ok(sendable);
+    }
+    let config = yaak_crossservice_auth::Config::from_values(values)
+        .map_err(|e| Refusal::Invalid(e.to_string()))?;
+    let body: &[u8] = match &sendable.body {
+        None => b"",
+        Some(SendableBody::Bytes(bytes)) => bytes.as_ref(),
+        Some(_) => {
+            return Err(Refusal::Unsupported(
+                "Cross-service token: the body is streamed, so it cannot be hashed into the token"
+                    .to_string(),
+            ));
+        }
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or_default();
+    let header = yaak_crossservice_auth::authorization_header(&config, body, now);
+    sendable.insert_header(("Authorization".to_string(), header));
+    Ok(sendable)
+}
 
 /// Check and prepare a send, then hand back the task that runs it. Refusals happen here, before
 /// the caller has committed to a streaming response.
@@ -98,6 +131,11 @@ pub async fn prepare(limits: Arc<SendLimits>, send: SendRequest) -> Result<Prepa
     )
     .await
     .map_err(|e| Refusal::Invalid(e.to_string()))?;
+
+    // [shaman] CORE-454: the cross-service token is minted here, over the final bytes, since
+    // the browser has no plugins and the tab never sees the bytes it sends.
+    let sendable =
+        apply_cross_service_token(sendable, &request.authentication_type, &request.authentication)?;
 
     // The first hop, checked up front so a bad destination is a clean refusal rather than a
     // stream that opens and immediately errors. Every later hop is checked by GuardedSender.

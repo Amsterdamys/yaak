@@ -19,13 +19,29 @@ pub async fn cmd_get_http_authentication_summaries<H: PluginHost>(
     host: H,
     _req: CmdGetHttpAuthenticationSummariesReq,
 ) -> Result<Vec<GetHttpAuthenticationSummaryResponse>> {
-    host.http_authentication_summaries().await
+    let mut summaries = host.http_authentication_summaries().await?;
+    // [shaman] CORE-454: the native cross-service token joins the plugin-provided types
+    summaries.push(GetHttpAuthenticationSummaryResponse {
+        name: yaak_crossservice_auth::AUTH_NAME.to_string(),
+        label: yaak_crossservice_auth::LABEL.to_string(),
+        short_label: yaak_crossservice_auth::SHORT_LABEL.to_string(),
+    });
+    Ok(summaries)
 }
 
 pub async fn cmd_get_http_authentication_config<H: PluginHost>(
     host: H,
     req: CmdGetHttpAuthenticationConfigReq,
 ) -> Result<GetHttpAuthenticationConfigResponse> {
+    // [shaman] CORE-454: a fixed form, no plugin and nothing to render
+    if req.auth_name == yaak_crossservice_auth::AUTH_NAME {
+        return Ok(GetHttpAuthenticationConfigResponse {
+            args: serde_json::from_str(yaak_crossservice_auth::FORM_JSON)?,
+            plugin_ref_id: "__NATIVE__".to_string(),
+            actions: None,
+        });
+    }
+
     // A config form is being displayed, so a template that cannot resolve
     // should show as blank rather than refuse to open the form.
     let values = render_form_values(

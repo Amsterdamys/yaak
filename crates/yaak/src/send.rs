@@ -1156,6 +1156,10 @@ pub async fn apply_plugin_authentication(
     match &request.authentication_type {
         None => {}
         Some(authentication_type) if authentication_type == "none" => {}
+        // [shaman] CORE-454: the cross-service token is native, no plugin round trip
+        Some(authentication_type) if authentication_type == yaak_crossservice_auth::AUTH_NAME => {
+            apply_cross_service_token(sendable_request, &request.authentication)?;
+        }
         Some(authentication_type) => {
             let req = CallHttpAuthenticationRequest {
                 context_id: format!("{:x}", md5::compute(auth_context_id)),
@@ -1201,6 +1205,30 @@ pub async fn apply_plugin_authentication(
             }
         }
     }
+    Ok(())
+}
+
+/// [shaman] CORE-454: mint the cross-service token over the exact bytes about to be sent.
+fn apply_cross_service_token(
+    sendable_request: &mut SendableHttpRequest,
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+) -> std::result::Result<(), String> {
+    if yaak_crossservice_auth::is_disabled(values) {
+        return Ok(());
+    }
+    let config = yaak_crossservice_auth::Config::from_values(values).map_err(|e| e.to_string())?;
+    let body: &[u8] = match &sendable_request.body {
+        None => b"",
+        Some(SendableBody::Bytes(bytes)) => bytes.as_ref(),
+        Some(_) => {
+            return Err("Cross-service token: the body is streamed from a file, so it cannot be \
+                        hashed into the token. Use a text body."
+                .to_string());
+        }
+    };
+    let header =
+        yaak_crossservice_auth::authorization_header(&config, body, chrono::Utc::now().timestamp());
+    sendable_request.insert_header(("Authorization".to_string(), header));
     Ok(())
 }
 
@@ -1323,6 +1351,60 @@ mod tests {
                 ContentEncoding::Identity,
             ))
         }
+    }
+
+    /// [shaman] CORE-454: the token is minted over the bytes that go on the wire, and the
+    /// Enabled/Disabled control is honoured.
+    #[tokio::test]
+    async fn cross_service_token_is_bound_to_the_sent_bytes() {
+        use base64::Engine;
+        let request = HttpRequest {
+            workspace_id: "wk_test".to_string(),
+            method: "POST".to_string(),
+            url: "http://localhost/graphql".to_string(),
+            body_type: Some("application/json".to_string()),
+            body: serde_json::from_value(
+                serde_json::json!({"text": "{\"query\":\"{ __typename }\"}"}),
+            )
+            .unwrap(),
+            ..Default::default()
+        };
+        let options = SendableHttpRequestOptions { timeout: None, follow_redirects: false };
+        let mut sendable =
+            SendableHttpRequest::from_http_request(&request, options.clone()).await.unwrap();
+        let sent_bytes = match &sendable.body {
+            Some(SendableBody::Bytes(b)) => b.to_vec(),
+            _ => panic!("expected bytes"),
+        };
+        let values: std::collections::BTreeMap<String, serde_json::Value> =
+            serde_json::from_value(serde_json::json!({
+                "company": "demo", "kid": "go-core-1", "secret": "test-secret",
+                "secretBase64": false, "actSub": "42",
+            }))
+            .unwrap();
+
+        apply_cross_service_token(&mut sendable, &values).unwrap();
+        let (_, header) = sendable
+            .headers
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))
+            .expect("Authorization header set");
+        assert!(header.starts_with("API-KEY JWT="), "{header}");
+        assert!(header.ends_with(",CompanyUrlName=demo"), "{header}");
+        let jwt = &header["API-KEY JWT=".len()..header.len() - ",CompanyUrlName=demo".len()];
+        let payload = jwt.split('.').nth(1).unwrap();
+        let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload).unwrap();
+        let claims: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(claims["bh"], yaak_crossservice_auth::body_hash(&sent_bytes));
+        assert_eq!(claims["company"], "demo");
+        assert_eq!(claims["act"]["sub"], "42");
+
+        // Disabled: no header, no error even with an empty config
+        let mut sendable = SendableHttpRequest::from_http_request(&request, options).await.unwrap();
+        let disabled: std::collections::BTreeMap<String, serde_json::Value> =
+            serde_json::from_value(serde_json::json!({"disabled": true})).unwrap();
+        apply_cross_service_token(&mut sendable, &disabled).unwrap();
+        assert!(!sendable.headers.iter().any(|(n, _)| n.eq_ignore_ascii_case("authorization")));
     }
 
     /// The hosted sender runs with no query manager, blob manager, or response directory. Nothing

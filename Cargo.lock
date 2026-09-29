@@ -11238,6 +11238,7 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "yaak-core",
+ "yaak-crossservice-auth",
  "yaak-crypto",
  "yaak-http",
  "yaak-models",
@@ -11394,6 +11395,7 @@ dependencies = [
  "tokio",
  "yaak",
  "yaak-core",
+ "yaak-crossservice-auth",
  "yaak-crypto",
  "yaak-models",
  "yaak-plugins",
@@ -11414,6 +11416,20 @@ name = "yaak-core"
 version = "0.0.0"
 dependencies = [
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "yaak-crossservice-auth"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "hex",
+ "hmac",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.20",
+ "uuid",
 ]
 
 [[package]]
@@ -11811,6 +11827,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "yaak-crossservice-auth",
  "yaak-lifecycle",
  "yaak-models",
  "yaak-templates",
@@ -11837,6 +11854,7 @@ dependencies = [
  "ts-rs",
  "url",
  "uuid",
+ "yaak-crossservice-auth",
  "yaak-http",
  "yaak-models",
 ]
