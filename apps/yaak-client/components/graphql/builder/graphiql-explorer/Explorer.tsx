@@ -17,6 +17,7 @@
 // Note: Attempted 1. and 2., but they were more annoying than helpful
 
 import * as React from "react";
+import { claimAutoOpen } from "../filter"; // [shaman] CORE-438 filter budget
 
 import {
   getNamedType,
@@ -1421,8 +1422,11 @@ class FieldView extends React.PureComponent {
         : null;
 
     // [shaman] Field filter: hide rows that neither match nor lead to a match, and open the
-    // rows that lead to one (a few levels deep) so the match is visible without selecting.
+    // rows that lead to one (a few levels deep, within the filter's budget) so the match is
+    // visible without selecting. The budget is what keeps a broad match from rendering the
+    // whole schema at once.
     const filter = this.props.filter;
+    const filterPath = `${this.props.filterPath || ""}.${field.name}`;
     let forcedOpen = false;
     if (filter) {
       const selfMatch = filter.test(field.name);
@@ -1431,7 +1435,11 @@ class FieldView extends React.PureComponent {
       if (!selfMatch && !deepMatch) {
         return null;
       }
-      forcedOpen = !selection && deepMatch && (this.props.forcedDepth || 0) < 3;
+      forcedOpen =
+        !selection &&
+        deepMatch &&
+        (this.props.forcedDepth || 0) < 3 &&
+        claimAutoOpen(filter, filterPath);
     }
     const childForcedDepth = forcedOpen ? (this.props.forcedDepth || 0) + 1 : 0;
 
@@ -1634,6 +1642,7 @@ class FieldView extends React.PureComponent {
                   availableFragments={this.props.availableFragments}
                   filter={filter}
                   forcedDepth={childForcedDepth}
+                  filterPath={filterPath}
                 />
               ))}
             {isInterfaceType(type) || isUnionType(type)
@@ -1915,6 +1924,7 @@ class RootView extends React.PureComponent {
               modifySelections={this._modifySelections}
               filter={this.props.filter}
               forcedDepth={0}
+              filterPath={operationType}
               schema={schema}
               getDefaultFieldNames={getDefaultFieldNames}
               getDefaultScalarArgValue={this.props.getDefaultScalarArgValue}

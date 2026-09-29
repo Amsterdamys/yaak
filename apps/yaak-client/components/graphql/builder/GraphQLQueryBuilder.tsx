@@ -114,11 +114,19 @@ export function GraphQLQueryBuilder({
   defaultFilter = "",
 }: Props) {
   const body = useMemo(() => normalizeGraphQLBody(request.body), [request.body]);
+  const [filterInput, setFilterInput] = useState(defaultFilter);
+  // What the tree filters on: the input, a beat behind, so a big schema is not re-walked and
+  // re-rendered on every keystroke.
   const [filterText, setFilterText] = useState(defaultFilter);
+  useEffect(() => {
+    const timer = setTimeout(() => setFilterText(filterInput), 150);
+    return () => clearTimeout(timer);
+  }, [filterInput]);
   // The search input is uncontrolled; remounting it is how "clear" empties it.
   const [filterInputKey, setFilterInputKey] = useState(0);
   const filter = useMemo(() => buildFieldFilter(schema, filterText), [schema, filterText]);
   const clearFilter = useCallback(() => {
+    setFilterInput("");
     setFilterText("");
     setFilterInputKey((k) => k + 1);
   }, []);
@@ -166,15 +174,15 @@ export function GraphQLQueryBuilder({
             label="Filter fields"
             hideLabel
             placeholder="Filter fields, or /regex/"
-            defaultValue={filterText}
-            onChange={setFilterText}
+            defaultValue={filterInput}
+            onChange={setFilterInput}
             leftSlot={
               <div className="w-10 flex justify-center items-center">
                 <Icon size="sm" icon="search" color="secondary" />
               </div>
             }
             rightSlot={
-              filterText === "" ? null : (
+              filterInput === "" ? null : (
                 <IconButton
                   icon="x"
                   size="xs"
