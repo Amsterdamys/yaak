@@ -64,15 +64,17 @@ impl Config {
         if raw_secret.is_empty() {
             return Err(Error::Config("the secret is empty".into()));
         }
-        let secret = if flag(values, "secretBase64", true) {
+        // Base64 is the keyring's format, so it is the default; the form cannot default a
+        // checkbox to on, hence the flag is the exception ("plain") rather than the rule.
+        let secret = if flag(values, "secretPlain", false) {
+            raw_secret.into_bytes()
+        } else {
             STANDARD.decode(raw_secret.as_bytes()).map_err(|_| {
                 Error::Config(
-                    "the secret is not valid base64; untick \"Secret is base64\" for a plain-text secret"
+                    "the secret is not valid base64; tick \"Secret is plain text\" for a plain-text secret"
                         .into(),
                 )
             })?
-        } else {
-            raw_secret.into_bytes()
         };
 
         let ttl = text(values, "ttl");
@@ -221,7 +223,7 @@ mod tests {
             "company": "demo",
             "kid": "go-core-1",
             "secret": secret,
-            "secretBase64": base64,
+            "secretPlain": !base64,
             "audience": "go-core",
             "ttl": "90",
             "subject": "yaak-caller",
@@ -283,8 +285,13 @@ mod tests {
 
         let mut v = values("not base64!", true);
         assert!(Config::from_values(&v).unwrap_err().to_string().contains("base64"));
-        v.insert("secretBase64".into(), Value::String("false".into()));
+        v.insert("secretPlain".into(), Value::String("true".into()));
         assert!(Config::from_values(&v).is_ok());
+
+        // No flag at all means base64, the keyring's format
+        let mut v = values("dGVzdC1zZWNyZXQ=", true);
+        v.remove("secretPlain");
+        assert_eq!(Config::from_values(&v).unwrap().secret, b"test-secret");
 
         let mut v = values("test-secret", false);
         v.insert("actSub".into(), Value::String("bob".into()));
@@ -313,7 +320,7 @@ mod tests {
             "company",
             "kid",
             "secret",
-            "secretBase64",
+            "secretPlain",
             "audience",
             "ttl",
             "actSub",
