@@ -22,6 +22,8 @@ import type { CapabilityName, RpcPayload } from "../types";
 import type { WorkerConnection } from "./connection";
 import { unsupported } from "./errors";
 import { sendHttpRequest } from "./send";
+// [shaman] CORE-454: the cross-service auth form, shared with the Rust registry
+import crossServiceAuthForm from "../../../../crates/yaak-crossservice-auth/form.json";
 
 export type AppCmd = keyof RpcSchema;
 
@@ -165,7 +167,11 @@ const HANDLERS: Partial<Record<AppCmd, Handler>> = {
     return [{ pluginRefId: "web", functions: [] }];
   },
 
-  async cmd_get_http_authentication_config() {
+  async cmd_get_http_authentication_config(payload) {
+    // [shaman] CORE-454: the cross-service token is native; the send server mints it
+    if (str(payload, "authName") === CROSS_SERVICE_AUTH.name) {
+      return { args: crossServiceAuthForm, pluginRefId: "__NATIVE__" };
+    }
     return { args: [], pluginRefId: "web" };
   },
 
@@ -244,6 +250,16 @@ const HANDLERS: Partial<Record<AppCmd, Handler>> = {
  * picker is truthful about the product; choosing one currently yields an empty
  * config form, because the plugin that defines the form isn't running.
  */
+/**
+ * [shaman] CORE-454: the one auth type that works here, because it is Rust in the send
+ * server rather than a plugin. The name and form are the crate's, so they cannot drift.
+ */
+const CROSS_SERVICE_AUTH = {
+  name: "shaman_crossservice",
+  label: "Cross-service token (Shaman)",
+  shortLabel: "Cross-service",
+};
+
 const HTTP_AUTHENTICATION_SUMMARIES = [
   { name: "apikey", label: "API Key", shortLabel: "API Key" },
   { name: "aws", label: "AWS SigV4", shortLabel: "AWS" },
@@ -254,6 +270,7 @@ const HTTP_AUTHENTICATION_SUMMARIES = [
   { name: "ntlm", label: "NTLM", shortLabel: "NTLM" },
   { name: "oauth1", label: "OAuth 1.0", shortLabel: "OAuth 1" },
   { name: "oauth2", label: "OAuth 2.0", shortLabel: "OAuth 2" },
+  CROSS_SERVICE_AUTH,
 ];
 
 /**

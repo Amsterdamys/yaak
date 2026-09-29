@@ -1,0 +1,21 @@
+# [shaman] CORE-454: the cross-service token authentication, shared by the desktop app, the
+# CLI, the browser send server and (for its name only) the browser's wasm module.
+[package]
+name = "yaak-crossservice-auth"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+base64 = "0.22.1"
+hex = { workspace = true }
+hmac = "0.12"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+
+# The browser's wasm module only needs the auth name; the send server mints the token.
+# uuid's getrandom does not build for wasm32 without extra flags, so it stays out of there.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+uuid = { version = "1", features = ["v4"] }

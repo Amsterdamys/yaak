@@ -117,3 +117,38 @@ reloads the page on the first run, which loses that run) and `apps/yaak-client/p
 under `apps/yaak-client/components/requestTests/`. Upstream has a `plan/test-assertions-ci`
 branch with a different, declarative assertions model; if it lands, the two coexist until we
 decide which to keep.
+
+### Cross-service token authentication (CORE-454)
+
+An authentication type, "Cross-service token (Shaman)", built into the Rust send path instead
+of the `crossServiceToken` template-function plugin. It mints the HS256 JWT that Shaman
+services accept from each other (`Authorization: API-KEY JWT=<jwt>,CompanyUrlName=<company>`),
+with the `bh` claim computed over the exact bytes about to be sent, so it needs no request id,
+no re-rendering of the body and no per-request setup: set it once on the folder (or the
+workspace) in the Auth tab and every request under it inherits it. Duplicated requests,
+schema introspection, form bodies and GraphQL all work. The secret is a password field, so
+the desktop stores it encrypted with `secure()`; in the browser edition it stays plain (or an
+environment variable), because that edition has no encryption.
+
+- **Crate** `crates/yaak-crossservice-auth`: the token math (`Config::from_values`, `sign`,
+  `authorization_header`, `body_hash`), the auth name `shaman_crossservice`, and `form.json`,
+  the config form in the plugin API's `FormInput` shape. One file feeds both the Rust
+  registry and the browser host's TypeScript. The tests pin a known token byte for byte.
+- **Desktop and CLI**: one match arm in `apply_plugin_authentication` (`crates/yaak/src/send.rs`)
+  mints the header from the rendered auth values (templates resolved, `secure()` decrypted)
+  and the final `SendableBody::Bytes`. Streamed bodies (binary file, multipart with files)
+  are refused with a message, since they cannot be hashed without buffering.
+- **Registry**: `crates/yaak-commands/src/auth.rs` appends the native summary to the plugin
+  ones and answers its config form without a plugin, so the desktop client needs no change.
+- **Browser edition**: the wasm gate in `crates/yaak-wasm/src/lib.rs` lets this auth type
+  through, the tab posts the rendered request to the send server as before, and
+  `crates-server/yaak-web/src/send.rs` mints the header there over the final bytes. The web
+  host's command table (`packages/platform/src/web/commands.ts`) lists the type and imports
+  the same `form.json`. The plain secret travels tab → send server inside the send request.
+- **Contract** (as go-core verifies it): header `{alg, typ, kid}`; claims `sub`, `aud`
+  (array), `iat`, `exp = iat + ttl`, `jti`, `bh = "sha256:" + hex`, `company`, optional
+  `act.sub` (numeric user id). Secret base64 by default, as stored in the SSM keyrings.
+
+Upstream files touched: the two `send.rs`, `auth.rs`, the wasm `lib.rs`, `commands.ts`, the
+workspace `Cargo.toml` and four crate manifests, each by a few marked lines. After any change
+to the Rust side, rebuild the wasm package (see above).
