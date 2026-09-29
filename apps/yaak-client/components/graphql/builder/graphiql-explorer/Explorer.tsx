@@ -2436,7 +2436,7 @@ class Explorer extends React.PureComponent {
                 filter={this.props.filter}
                 fields={fields}
                 operationType={operationType}
-                name={isPlaceholder ? "" : operationName}
+                name={isPlaceholder ? "" : (operationName ?? "")}
                 definition={operation}
                 onOperationRename={onOperationRename}
                 onOperationDestroy={onOperationDestroy}
