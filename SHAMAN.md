@@ -35,6 +35,27 @@ Everything in `DEVELOPMENT.md` applies. Two things to know on a Mac without Home
 `npm start` runs the desktop app with hot reload for the TypeScript side; the Rust shell
 compiles once (10 to 20 minutes) and is cached after that.
 
+### The browser edition's WebAssembly package
+
+`crates/yaak-wasm/pkg` is committed and is what the web edition (`Dockerfile.web`,
+`npm run web:dev`) runs for models, migrations and templates. It has to be rebuilt after
+any change under `crates/` that the client depends on, including a new model field, or the
+browser silently runs the old code. Without a wasm-capable clang, rebuild it in Docker:
+
+```shell
+scripts/wasm-builder/build.sh   # about a minute once the image and cargo cache exist
+```
+
+Then commit `crates/yaak-wasm/pkg`. Merging an upstream release brings upstream's package,
+built without our changes, so run this after every sync too. `npm run web:dev` needs `cargo`
+on the PATH (`source ~/.cargo/env`).
+
+### Regenerating the TypeScript bindings
+
+`cargo test -p yaak-models` (and `-p yaak-plugins`, `-p yaak-sync`, `-p yaak-git`) rewrites
+the `bindings/*.ts` files, but unformatted, and the formatter ignores those paths. Restore
+them with git and copy the changed lines in by hand instead, so the upstream diff stays small.
+
 ## Features
 
 ### GraphQL query builder (CORE-438)
@@ -50,3 +71,38 @@ mutations and subscriptions are always reachable.
 Upstream files touched, both by a few lines: `components/graphql/GraphQLEditor.tsx` (the
 toolbar toggle) and `components/HttpRequestLayout.tsx` (mounting the panel). Everything else
 is new files in `components/graphql/builder/`.
+
+### Request tests (CORE-452)
+
+A "Tests" tab on every HTTP and GraphQL request, working the way Postman's post-response
+scripts do, replacing the Request Tests plugin. The script is stored in a new request field,
+`testScript` (column `test_script`, migration `20260929000000_request-test-script.sql`), so
+it is synced to the workspace YAML like everything else and shows in git diffs.
+
+- **Editor**: Yaak's JavaScript editor plus completion for the test API. The API is declared
+  once in `components/requestTests/api.ts`, so `pm.` offers its members, `pm.response.to.`
+  its assertions, `expect(x).to.` the Chai chain, and each entry carries its documentation.
+  Postman's snippets sit in a panel next to the editor and in the completion list. Syntax
+  errors are underlined.
+- **Runtime** (`sandbox.ts`): Postman's `pm` API on top of Chai 6, with `pm.test`,
+  `pm.test.skip`, `pm.expect`, `pm.response` (`json`, `text`, `headers`, `to.have.*`,
+  `to.be.*`, `to.not`, `jsonSchema` through Ajv), `pm.request`, `pm.info`, `pm.environment`,
+  `pm.collectionVariables` / `pm.globals` (the workspace's base environment), `pm.variables`,
+  the legacy `tests[]`, `responseBody`, `responseCode` and `postman.*`, plus the shorthand
+  globals `test`, `expect`, `json`, `status`, `headers`, `body`, `elapsed`. Variable writes
+  are applied to the environments when the script ends. `pm.sendRequest`, `pm.cookies` and
+  `pm.execution` throw a message saying they are not available. Scripts run in a Web Worker
+  created per run and stopped after 10 seconds.
+- **Runs**: after every send, from the single send function, unless the request's
+  "Run on send" switch is off (stored per request in the local key-value store). "Run" in the
+  Tests tab re-runs against the last response without sending.
+- **Results**: a "Tests" tab in the response pane with the passed/total badge, a
+  passed/failed/skipped filter, Chai's failure messages, console output and a re-run button.
+
+Upstream files touched, each by a few lines: `crates/yaak-models/src/models.rs` (the field),
+the generated `bindings/gen_models.ts` copies, `components/HttpRequestPane.tsx` (the tab),
+`components/HttpResponsePane.tsx` (the results tab), `hooks/useSendAnyHttpRequest.ts` (the
+run after a send) and `apps/yaak-client/package.json` (chai, ajv). Everything else is new
+under `apps/yaak-client/components/requestTests/`. Upstream has a `plan/test-assertions-ci`
+branch with a different, declarative assertions model; if it lands, the two coexist until we
+decide which to keep.
