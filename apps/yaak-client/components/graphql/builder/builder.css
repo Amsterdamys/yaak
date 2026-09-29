@@ -57,13 +57,25 @@
   cursor: pointer !important;
 }
 
-/* Arguments sit under their field, indented; give them the same row feel. */
+/*
+ * Arguments sit under their field, indented. An argument row is a div holding the label span
+ * (checkbox + name) and, once ticked, its value input or, for input objects, a nested block of
+ * arguments. The row is a wrapping flex line so label and input share one baseline, and a
+ * nested block takes the full width below the label.
+ */
+.yaak-graphql-builder .graphiql-explorer-root .graphiql-explorer-graphql-arguments > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.75rem !important;
+}
+
 .yaak-graphql-builder .graphiql-explorer-root .graphiql-explorer-graphql-arguments > div > span {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  min-height: 1.6rem;
-  padding: 0 0.25rem;
+  gap: 0.4rem;
+  padding: 0.1rem 0.25rem;
   border-radius: 0.3rem;
 }
 
@@ -71,8 +83,12 @@
   .graphiql-explorer-root
   .graphiql-explorer-graphql-arguments
   > div
-  > span:hover {
+  > span:first-child:hover {
   background: var(--surfaceHighlight);
+}
+
+.yaak-graphql-builder .graphiql-explorer-root .graphiql-explorer-graphql-arguments > div > div {
+  flex-basis: 100%;
 }
 
 .yaak-graphql-builder .graphiql-explorer-root .toolbar-button {

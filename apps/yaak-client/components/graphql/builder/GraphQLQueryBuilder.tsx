@@ -115,7 +115,13 @@ export function GraphQLQueryBuilder({
 }: Props) {
   const body = useMemo(() => normalizeGraphQLBody(request.body), [request.body]);
   const [filterText, setFilterText] = useState(defaultFilter);
+  // The search input is uncontrolled; remounting it is how "clear" empties it.
+  const [filterInputKey, setFilterInputKey] = useState(0);
   const filter = useMemo(() => buildFieldFilter(schema, filterText), [schema, filterText]);
+  const clearFilter = useCallback(() => {
+    setFilterText("");
+    setFilterInputKey((k) => k + 1);
+  }, []);
 
   // The query text this panel last wrote. The store applies a write only when the model_writes
   // event comes back, after patchModel resolves, so the editor is told to reload from the
@@ -143,25 +149,43 @@ export function GraphQLQueryBuilder({
 
   return (
     <div className={classNames(className, "yaak-graphql-builder py-3 mx-3")} style={style}>
-      <div className="grid grid-rows-[auto_minmax(0,1fr)] h-full border border-dashed border-border rounded-lg overflow-hidden">
-        <nav className="pl-4 pr-1 h-lg grid grid-rows-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center min-w-0 gap-2">
+      <div className="grid grid-rows-[auto_auto_minmax(0,1fr)] h-full border border-dashed border-border rounded-lg overflow-hidden">
+        <nav className="pl-4 pr-1 h-lg grid grid-rows-1 grid-cols-[minmax(0,1fr)_auto] items-center min-w-0 gap-1">
           <div className="flex items-center gap-2 text-text-subtle text-sm whitespace-nowrap">
             <Icon icon="check_square_checked" />
             Query Builder
           </div>
+          <div className="ml-auto flex gap-1 *:text-text-subtle">
+            <IconButton icon="x" size="sm" title="Close query builder" onClick={close} />
+          </div>
+        </nav>
+        <div className="px-3 pb-2">
           <PlainInput
+            key={filterInputKey}
             size="sm"
             label="Filter fields"
             hideLabel
             placeholder="Filter fields, or /regex/"
             defaultValue={filterText}
             onChange={setFilterText}
-            leftSlot={<Icon icon="search" size="sm" color="secondary" className="ml-2" />}
+            leftSlot={
+              <div className="w-10 flex justify-center items-center">
+                <Icon size="sm" icon="search" color="secondary" />
+              </div>
+            }
+            rightSlot={
+              filterText === "" ? null : (
+                <IconButton
+                  icon="x"
+                  size="xs"
+                  title="Clear filter"
+                  className="mr-1 text-text-subtle"
+                  onClick={clearFilter}
+                />
+              )
+            }
           />
-          <div className="ml-auto flex gap-1 *:text-text-subtle">
-            <IconButton icon="x" size="sm" title="Close query builder" onClick={close} />
-          </div>
-        </nav>
+        </div>
         <div className="overflow-auto h-full w-full px-3 pb-3">
           <ErrorBoundary name="GraphQLQueryBuilder">
             <TypedExplorer

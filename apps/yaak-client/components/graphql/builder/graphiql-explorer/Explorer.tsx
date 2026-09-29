@@ -589,14 +589,9 @@ class ScalarInput extends React.PureComponent {
     this.props.setArgValue(event, true);
   };
 
-  componentDidMount() {
-    const input = this._ref;
-    const activeElement = document.activeElement;
-    if (input && activeElement && !(activeElement instanceof HTMLTextAreaElement)) {
-      input.focus();
-      input.setSelectionRange(0, input.value.length);
-    }
-  }
+  // [shaman] Upstream focused a scalar input on mount. Inputs also mount when the filter
+  // reveals an already-selected field, which pulled the caret out of the search box, so the
+  // input is never focused by the tree; the user clicks it.
 
   render() {
     const { arg, argValue, styleConfig } = this.props;

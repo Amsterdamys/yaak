@@ -24,7 +24,9 @@ the component behind the "Explorer" panel in GraphiQL and the GraphQL query buil
 6. Root-type sections (marked `[shaman]`): `Explorer.render` shows a section for every root
    type of the schema, not only for the operations present in the document. A section without
    an operation is a placeholder; the first tick in it adds the operation to the document.
+7. No auto-focus (marked `[shaman]`): `ScalarInput` no longer focuses itself on mount, which
+   stole the caret from the search box whenever the filter revealed an argument input.
 
 Everything else is the upstream source unchanged. To refresh it, repeat steps 1 to 4 on the new
-upstream file and re-apply 5 and 6 (grep for `[shaman]`). Yaak-specific styling lives in `../builder.css` and `../GraphQLQueryBuilder.tsx`,
+upstream file and re-apply 5 to 7 (grep for `[shaman]`). Yaak-specific styling lives in `../builder.css` and `../GraphQLQueryBuilder.tsx`,
 never in this file.
