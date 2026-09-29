@@ -147,7 +147,8 @@ environment variable), because that edition has no encryption.
   the same `form.json`. The plain secret travels tab → send server inside the send request.
 - **Contract** (as go-core verifies it): header `{alg, typ, kid}`; claims `sub`, `aud`
   (array), `iat`, `exp = iat + ttl`, `jti`, `bh = "sha256:" + hex`, `company`, optional
-  `act.sub` (numeric user id). Secret base64 by default, as stored in the SSM keyrings.
+  `act.sub` (numeric user id). The secret is base64 unless "Secret is plain text" is ticked, since
+  the SSM keyrings store it base64 and Yaak's form cannot default a checkbox to on.
 
 Upstream files touched: the two `send.rs`, `auth.rs`, the wasm `lib.rs`, `commands.ts`, the
 workspace `Cargo.toml` and four crate manifests, each by a few marked lines. After any change

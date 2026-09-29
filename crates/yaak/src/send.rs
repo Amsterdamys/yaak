@@ -1379,7 +1379,7 @@ mod tests {
         let values: std::collections::BTreeMap<String, serde_json::Value> =
             serde_json::from_value(serde_json::json!({
                 "company": "demo", "kid": "go-core-1", "secret": "test-secret",
-                "secretBase64": false, "actSub": "42",
+                "secretPlain": true, "actSub": "42",
             }))
             .unwrap();
 

@@ -18,13 +18,12 @@
     "name": "secret",
     "label": "Secret",
     "password": true,
-    "description": "The key from the keyring, base64 as stored in SSM. Untick the box below for a plain-text secret."
+    "description": "The key from the keyring, base64 as stored in SSM. Tick the box below for a plain-text secret."
   },
   {
     "type": "checkbox",
-    "name": "secretBase64",
-    "label": "Secret is base64",
-    "defaultValue": "true"
+    "name": "secretPlain",
+    "label": "Secret is plain text, not base64"
   },
   {
     "type": "text",
