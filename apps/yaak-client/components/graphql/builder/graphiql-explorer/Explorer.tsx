@@ -1365,6 +1365,26 @@ class FieldView extends React.PureComponent {
   };
 
   _modifyChildSelections = (selections, options) => {
+    // [shaman] A child ticked under a parent that is not selected yet (the filter shows the
+    // parent expanded): select the parent as well, with the child as its selection set.
+    if (!this._getSelection()) {
+      return this.props.modifySelections(
+        [
+          ...this.props.selections,
+          {
+            kind: "Field",
+            name: { kind: "Name", value: this.props.field.name },
+            arguments: defaultArgs(
+              this.props.getDefaultScalarArgValue,
+              this.props.makeDefaultArg,
+              this.props.field,
+            ),
+            selectionSet: { kind: "SelectionSet", selections },
+          },
+        ],
+        options,
+      );
+    }
     return this.props.modifySelections(
       this.props.selections.map((selection) => {
         if (selection.kind === "Field" && this.props.field.name === selection.name.value) {
@@ -1405,6 +1425,21 @@ class FieldView extends React.PureComponent {
         ? this.props.availableFragments && this.props.availableFragments[type.name]
         : null;
 
+    // [shaman] Field filter: hide rows that neither match nor lead to a match, and open the
+    // rows that lead to one (a few levels deep) so the match is visible without selecting.
+    const filter = this.props.filter;
+    let forcedOpen = false;
+    if (filter) {
+      const selfMatch = filter.test(field.name);
+      const deepMatch =
+        (isObjectType(type) || isInterfaceType(type)) && filter.matchingTypes.has(type.name);
+      if (!selfMatch && !deepMatch) {
+        return null;
+      }
+      forcedOpen = !selection && deepMatch && (this.props.forcedDepth || 0) < 3;
+    }
+    const childForcedDepth = forcedOpen ? (this.props.forcedDepth || 0) + 1 : 0;
+
     const node = (
       <div className={className}>
         <span
@@ -1437,7 +1472,9 @@ class FieldView extends React.PureComponent {
         >
           {isObjectType(type) ? (
             <span>
-              {!!selection ? this.props.styleConfig.arrowOpen : this.props.styleConfig.arrowClosed}
+              {!!selection || forcedOpen
+                ? this.props.styleConfig.arrowOpen
+                : this.props.styleConfig.arrowClosed}
             </span>
           ) : null}
           {isObjectType(type) ? null : (
@@ -1552,7 +1589,10 @@ class FieldView extends React.PureComponent {
       </div>
     );
 
-    if (selection && (isObjectType(type) || isInterfaceType(type) || isUnionType(type))) {
+    if (
+      (selection || forcedOpen) &&
+      (isObjectType(type) || isInterfaceType(type) || isUnionType(type))
+    ) {
       const fields = isUnionType(type) ? {} : type.getFields();
       const childSelections = selection
         ? selection.selectionSet
@@ -1597,6 +1637,8 @@ class FieldView extends React.PureComponent {
                   onCommit={this.props.onCommit}
                   definition={this.props.definition}
                   availableFragments={this.props.availableFragments}
+                  filter={filter}
+                  forcedDepth={childForcedDepth}
                 />
               ))}
             {isInterfaceType(type) || isUnionType(type)
@@ -1876,6 +1918,8 @@ class RootView extends React.PureComponent {
               field={fields[fieldName]}
               selections={selections}
               modifySelections={this._modifySelections}
+              filter={this.props.filter}
+              forcedDepth={0}
               schema={schema}
               getDefaultFieldNames={getDefaultFieldNames}
               getDefaultScalarArgValue={this.props.getDefaultScalarArgValue}
@@ -2017,6 +2061,33 @@ class Explorer extends React.PureComponent {
       // If we don't have any relevant definitions from the parsed document,
       // then at least show an expanded Query selection
       _relevantOperations.length === 0 ? DEFAULT_DOCUMENT.definitions : _relevantOperations;
+
+    // [shaman] One section per root type. Root types without an operation in the document
+    // get a placeholder section; ticking a field there adds the operation to the document.
+    const presentOperationTypes = new Set(
+      relevantOperations
+        .filter((op) => op.kind === "OperationDefinition")
+        .map((op) => op.operation),
+    );
+    const placeholderSections = [
+      ["query", queryFields],
+      ["mutation", mutationFields],
+      ["subscription", subscriptionFields],
+    ]
+      .filter(([kind, fieldsOfKind]) => !!fieldsOfKind && !presentOperationTypes.has(kind))
+      .map(([kind]) => ({
+        kind: "OperationDefinition",
+        operation: kind,
+        name: null,
+        variableDefinitions: [],
+        directives: [],
+        selectionSet: { kind: "SelectionSet", selections: [] },
+        shamanPlaceholder: true,
+      }));
+    const sections = [...relevantOperations, ...placeholderSections];
+    const viewingDefaultOperationNow =
+      parsedQuery.definitions.length === 1 &&
+      parsedQuery.definitions[0] === DEFAULT_DOCUMENT.definitions[0];
 
     const renameOperation = (targetOperation, name) => {
       const newName =
@@ -2308,8 +2379,9 @@ class Explorer extends React.PureComponent {
             overflow: "scroll",
           }}
         >
-          {relevantOperations.map((operation, index) => {
+          {sections.map((operation, index) => {
             const operationName = operation && operation.name && operation.name.value;
+            const isPlaceholder = !!operation.shamanPlaceholder;
 
             const operationType =
               operation.kind === "FragmentDefinition"
@@ -2317,16 +2389,19 @@ class Explorer extends React.PureComponent {
                 : (operation && operation.operation) || "query";
 
             const onOperationRename = (newName) => {
+              if (isPlaceholder) return;
               const newOperationDef = renameOperation(operation, newName);
               this.props.onEdit(print(newOperationDef));
             };
 
             const onOperationClone = () => {
+              if (isPlaceholder) return;
               const newOperationDef = cloneOperation(operation);
               this.props.onEdit(print(newOperationDef));
             };
 
             const onOperationDestroy = () => {
+              if (isPlaceholder) return;
               const newOperationDef = destroyOperation(operation);
               this.props.onEdit(print(newOperationDef));
             };
@@ -2362,10 +2437,11 @@ class Explorer extends React.PureComponent {
             return (
               <RootView
                 key={index}
-                isLast={index === relevantOperations.length - 1}
+                isLast={index === sections.length - 1}
+                filter={this.props.filter}
                 fields={fields}
                 operationType={operationType}
-                name={operationName}
+                name={isPlaceholder ? "" : operationName}
                 definition={operation}
                 onOperationRename={onOperationRename}
                 onOperationDestroy={onOperationDestroy}
@@ -2379,6 +2455,25 @@ class Explorer extends React.PureComponent {
                     commit = options.commit;
                   } else {
                     commit = true;
+                  }
+
+                  if (!!newDefinition && isPlaceholder) {
+                    // [shaman] First tick in a placeholder section: the operation enters the
+                    // document, named like "Add new" would name it.
+                    const named = {
+                      ...newDefinition,
+                      name: { kind: "Name", value: `My${capitalize(operation.operation)}` },
+                    };
+                    const newQuery = {
+                      ...parsedQuery,
+                      definitions: viewingDefaultOperationNow
+                        ? [named]
+                        : [...parsedQuery.definitions, named],
+                    };
+                    if (commit) {
+                      onCommit(newQuery);
+                    }
+                    return newQuery;
                   }
 
                   if (!!newDefinition) {

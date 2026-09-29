@@ -16,7 +16,15 @@ the component behind the "Explorer" panel in GraphiQL and the GraphQL query buil
    not held to this repo's lint or type rules.
 3. `export { Explorer };` appended so the tree can be used without the GraphiQL title-bar wrapper.
 4. Formatted with the repo formatter (`vp fmt`), which the pre-commit hook applies anyway.
+5. Field filter (marked `[shaman]` in the code): a `filter` prop (`{ test, matchingTypes }`, built
+   by `../filter.ts`) is threaded `Explorer → RootView → FieldView`. A row is hidden unless its
+   name matches or its type leads to a match; rows that lead to one are opened a few levels deep
+   without being selected, and ticking a child under such a row selects the parent too
+   (`FieldView._modifyChildSelections`).
+6. Root-type sections (marked `[shaman]`): `Explorer.render` shows a section for every root
+   type of the schema, not only for the operations present in the document. A section without
+   an operation is a placeholder; the first tick in it adds the operation to the document.
 
-Everything else is the upstream source unchanged. To refresh it, repeat the four steps on the
-new upstream file. Yaak-specific styling lives in `../builder.css` and `../GraphQLQueryBuilder.tsx`,
+Everything else is the upstream source unchanged. To refresh it, repeat steps 1 to 4 on the new
+upstream file and re-apply 5 and 6 (grep for `[shaman]`). Yaak-specific styling lives in `../builder.css` and `../GraphQLQueryBuilder.tsx`,
 never in this file.

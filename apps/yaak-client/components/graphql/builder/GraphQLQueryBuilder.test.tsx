@@ -13,6 +13,11 @@ vi.mock("@yaakapp-internal/ui", () => ({
 vi.mock("../../core/IconButton", () => ({
   IconButton: ({ title }: { title: string }) => <button>{title}</button>,
 }));
+vi.mock("../../core/PlainInput", () => ({
+  PlainInput: ({ placeholder, defaultValue }: { placeholder: string; defaultValue: string }) => (
+    <input placeholder={placeholder} defaultValue={defaultValue} />
+  ),
+}));
 vi.mock("../../ErrorBoundary", () => ({
   ErrorBoundary: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -62,6 +67,36 @@ describe("GraphQLQueryBuilder", () => {
     expect(markup).toContain('value="42"');
     expect(markup).toMatch(/\[check_square_checked\][^[]*id/);
     expect(markup).toMatch(/\[check_square_unchecked\][^[]*name/);
+  });
+
+  test("shows a section for every root type, placeholders included", () => {
+    const markup = renderToStaticMarkup(
+      <GraphQLQueryBuilder schema={schema} request={request("query Health { health }")} />,
+    );
+
+    // The query section carries the document's operation; the mutation section is a placeholder
+    expect(markup).toContain('value="Health"');
+    expect(markup).toContain('placeholder="Mutation Name"');
+    expect(markup).toContain("emailDocumentTranslate");
+  });
+
+  test("the filter hides non-matching rows and opens the path to a nested match", () => {
+    const markup = renderToStaticMarkup(
+      <GraphQLQueryBuilder
+        schema={schema}
+        request={request("query Health { health }")}
+        defaultFilter="name"
+      />,
+    );
+
+    // `settings` leads to Settings.name: shown and opened although nothing is selected
+    expect(markup).toMatch(/\[chevron_down\][^[]*settings/);
+    expect(markup).toMatch(/\[check_square_unchecked\][^[]*name/);
+    // `health` matches nothing and is gone; Settings.id is not a match either
+    expect(markup).not.toContain('data-field-name="health"');
+    expect(markup).not.toContain('data-field-name="id"');
+    // The mutation section has no match and shows no rows
+    expect(markup).not.toContain("emailDocumentTranslate");
   });
 
   test("still renders when the query text does not parse", () => {

@@ -4,13 +4,16 @@ import { Icon } from "@yaakapp-internal/ui";
 import classNames from "classnames";
 import type { GraphQLSchema } from "graphql";
 import type { ComponentType, CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { wasUpdatedExternally } from "../../../hooks/useRequestUpdateKey";
 import { jotaiStore } from "../../../lib/jotai";
 import { normalizeGraphQLBody } from "../../../lib/requestBodyConversion";
 import { IconButton } from "../../core/IconButton";
+import { PlainInput } from "../../core/PlainInput";
 import { ErrorBoundary } from "../../ErrorBoundary";
 import { showGraphQLBuilderAtom } from "./builderAtoms";
+import type { FieldFilter } from "./filter";
+import { buildFieldFilter } from "./filter";
 import { Explorer } from "./graphiql-explorer/Explorer";
 import "./builder.css";
 
@@ -19,6 +22,8 @@ interface Props {
   request: HttpRequest;
   style?: CSSProperties;
   className?: string;
+  /** Initial search box text (tests). */
+  defaultFilter?: string;
 }
 
 /**
@@ -38,6 +43,7 @@ interface ExplorerProps {
   arrowClosed: ReactNode;
   checkboxChecked: ReactNode;
   checkboxUnchecked: ReactNode;
+  filter: FieldFilter | null;
 }
 
 const TypedExplorer = Explorer as unknown as ComponentType<ExplorerProps>;
@@ -100,8 +106,16 @@ const styles: Record<string, CSSProperties> = {
  * editor reload its text. Typing in the editor patches the model (debounced), and this
  * component re-renders from the new body.
  */
-export function GraphQLQueryBuilder({ schema, request, style, className }: Props) {
+export function GraphQLQueryBuilder({
+  schema,
+  request,
+  style,
+  className,
+  defaultFilter = "",
+}: Props) {
   const body = useMemo(() => normalizeGraphQLBody(request.body), [request.body]);
+  const [filterText, setFilterText] = useState(defaultFilter);
+  const filter = useMemo(() => buildFieldFilter(schema, filterText), [schema, filterText]);
 
   // The query text this panel last wrote. The store applies a write only when the model_writes
   // event comes back, after patchModel resolves, so the editor is told to reload from the
@@ -130,11 +144,20 @@ export function GraphQLQueryBuilder({ schema, request, style, className }: Props
   return (
     <div className={classNames(className, "yaak-graphql-builder py-3 mx-3")} style={style}>
       <div className="grid grid-rows-[auto_minmax(0,1fr)] h-full border border-dashed border-border rounded-lg overflow-hidden">
-        <nav className="pl-4 pr-1 h-lg grid grid-rows-1 grid-cols-[minmax(0,1fr)_auto] items-center min-w-0 gap-1">
+        <nav className="pl-4 pr-1 h-lg grid grid-rows-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center min-w-0 gap-2">
           <div className="flex items-center gap-2 text-text-subtle text-sm whitespace-nowrap">
             <Icon icon="check_square_checked" />
             Query Builder
           </div>
+          <PlainInput
+            size="sm"
+            label="Filter fields"
+            hideLabel
+            placeholder="Filter fields, or /regex/"
+            defaultValue={filterText}
+            onChange={setFilterText}
+            leftSlot={<Icon icon="search" size="sm" color="secondary" className="ml-2" />}
+          />
           <div className="ml-auto flex gap-1 *:text-text-subtle">
             <IconButton icon="x" size="sm" title="Close query builder" onClick={close} />
           </div>
@@ -150,10 +173,11 @@ export function GraphQLQueryBuilder({ schema, request, style, className }: Props
               showAttribution={false}
               colors={colors}
               styles={styles}
-              arrowOpen={<Icon icon="chevron_down" size="xs" />}
-              arrowClosed={<Icon icon="chevron_right" size="xs" />}
-              checkboxChecked={<Icon icon="check_square_checked" size="sm" color="primary" />}
-              checkboxUnchecked={<Icon icon="check_square_unchecked" size="sm" color="secondary" />}
+              filter={filter}
+              arrowOpen={<Icon icon="chevron_down" size="md" />}
+              arrowClosed={<Icon icon="chevron_right" size="md" />}
+              checkboxChecked={<Icon icon="check_square_checked" size="md" color="primary" />}
+              checkboxUnchecked={<Icon icon="check_square_unchecked" size="md" color="secondary" />}
             />
           </ErrorBoundary>
         </div>

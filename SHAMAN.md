@@ -42,7 +42,10 @@ compiles once (10 to 20 minutes) and is cached after that.
 A "Query Builder" side panel next to the Docs panel of the GraphQL editor: the schema as a
 checkbox tree, ticking a field writes it into the query text, editing the text updates the
 tree. Same as the builder in Postman, and it is the same component: the MIT-licensed
-`graphiql-explorer`, vendored under `apps/yaak-client/components/graphql/builder/`.
+`graphiql-explorer`, vendored under `apps/yaak-client/components/graphql/builder/`, with two
+additions marked `[shaman]` inside it: a search box that filters the tree (plain text, or
+`/regex/`) and keeps the path to nested matches open, and one section per root type so
+mutations and subscriptions are always reachable.
 
 Upstream files touched, both by a few lines: `components/graphql/GraphQLEditor.tsx` (the
 toolbar toggle) and `components/HttpRequestLayout.tsx` (mounting the panel). Everything else
