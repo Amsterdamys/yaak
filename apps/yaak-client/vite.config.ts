@@ -196,6 +196,10 @@ export default defineConfig(async () => {
         },
       },
     },
+    // [shaman] CORE-452: the test runner's worker is the only importer of these. Left to
+    // discovery, the dev server finds them on the first test run, re-optimizes and reloads
+    // the page, which kills that run and its results.
+    optimizeDeps: { include: ["chai", "ajv"] },
     clearScreen: false,
     server: {
       // `HOST` names the interface, as it does most places: unset leaves Vite on

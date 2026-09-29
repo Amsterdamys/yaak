@@ -8,10 +8,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@yaakapp-internal/platform", () => ({ platform: mocks.platform }));
-vi.mock("@yaakapp-internal/models", () => ({
-  flushAllModelWrites: mocks.flushAllModelWrites,
-  getModel: () => null, // [shaman] the send hook looks the request up for its tests
-}));
+vi.mock("@yaakapp-internal/models", () => ({ flushAllModelWrites: mocks.flushAllModelWrites }));
 vi.mock("../lib/confirm", () => ({ showConfirm: mocks.showConfirm }));
 vi.mock("../lib/appInfo", () => ({ appInfo: { identifier: "app.yaak.web" } }));
 vi.mock("../lib/rpc", () => ({ rpc: mocks.rpc }));

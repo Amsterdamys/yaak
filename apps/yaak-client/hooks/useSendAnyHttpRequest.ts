@@ -1,7 +1,6 @@
 import type { HttpResponse } from "@yaakapp-internal/models";
 import { flushAllModelWrites } from "@yaakapp-internal/models";
 import { confirmWebProxy } from "../lib/confirmWebProxy";
-import { runTestsAfterSend } from "../components/requestTests/runner";
 import { rpc } from "../lib/rpc";
 import { getActiveCookieJar } from "./useActiveCookieJar";
 import { getActiveEnvironment } from "./useActiveEnvironment";
@@ -18,13 +17,11 @@ async function sendAnyHttpRequestById(id: string | null): Promise<HttpResponse |
 
   await flushAllModelWrites();
 
-  const response = await rpc<HttpResponse | null>("cmd_send_http_request", {
+  return rpc("cmd_send_http_request", {
     requestId: id,
     environmentId: getActiveEnvironment()?.id,
     cookieJarId: getActiveCookieJar()?.id,
   });
-  runTestsAfterSend(id, response); // [shaman] CORE-452: the request's Tests tab
-  return response;
 }
 
 export function useSendAnyHttpRequest() {

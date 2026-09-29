@@ -17,18 +17,18 @@ export function hasTestScript(request: HttpRequest): boolean {
 }
 
 /**
- * Called by the send hook with every finished response. Runs the request's script unless
- * there is none or the request has "Run on send" switched off. Never throws.
+ * Called for every response that finishes, whoever sent it: the Send button, the folder's
+ * "Send All" plugin action, the sidebar's multi-select send or a plugin. Runs the request's
+ * script unless there is none or the request has "Run on send" switched off. Never throws.
  */
-export function runTestsAfterSend(requestId: string, response: HttpResponse | null) {
-  if (response == null) return;
+export function runTestsForFinishedResponse(response: HttpResponse) {
   try {
-    const request = getModel("http_request", requestId);
+    const request = getModel("http_request", response.requestId);
     if (request == null || !hasTestScript(request)) return;
-    if (jotaiStore.get(runTestsOnSendAtom)[requestId] === false) return;
+    if (jotaiStore.get(runTestsOnSendAtom)[request.id] === false) return;
     runRequestTests(request, response).catch(console.error);
   } catch (err) {
-    // A send must never fail because its tests could not start
+    // A finished response must never be lost because its tests could not start
     console.error("Could not start the request's tests", err);
   }
 }
