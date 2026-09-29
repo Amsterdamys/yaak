@@ -216,6 +216,10 @@ export type HttpRequest = {
   settingFollowRedirects: InheritedBoolSetting;
   settingRequestTimeout: InheritedIntSetting;
   settingHttpVersion: InheritedHttpVersionSetting;
+  /**
+   * [shaman] JavaScript run against the response after every send (Postman's post-response script).
+   */
+  testScript: string;
 };
 
 export type HttpRequestHeader = { enabled?: boolean; name: string; value: string; id?: string };

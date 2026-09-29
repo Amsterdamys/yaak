@@ -2,8 +2,8 @@ use crate::error::Result;
 use crate::models::HttpRequestIden::{
     Authentication, AuthenticationType, Body, BodyType, CreatedAt, Description, FolderId, Headers,
     Method, Name, SettingFollowRedirects, SettingHttpVersion, SettingRequestTimeout,
-    SettingSendCookies, SettingStoreCookies, SettingValidateCertificates, SortPriority, UpdatedAt,
-    Url, UrlParameters, WorkspaceId,
+    SettingSendCookies, SettingStoreCookies, SettingValidateCertificates, SortPriority, TestScript,
+    UpdatedAt, Url, UrlParameters, WorkspaceId,
 };
 use crate::util::generate_prefixed_id;
 use chrono::{NaiveDateTime, Utc};
@@ -1345,6 +1345,7 @@ impl Default for HttpRequest {
             setting_follow_redirects: InheritedBoolSetting::default(),
             setting_request_timeout: InheritedIntSetting::default(),
             setting_http_version: InheritedHttpVersionSetting::default(),
+            test_script: String::new(),
         }
     }
 }
@@ -1382,6 +1383,8 @@ pub struct HttpRequest {
     pub setting_follow_redirects: InheritedBoolSetting,
     pub setting_request_timeout: InheritedIntSetting,
     pub setting_http_version: InheritedHttpVersionSetting,
+    /// [shaman] JavaScript run against the response after every send (Postman's post-response script).
+    pub test_script: String,
 }
 
 impl UpsertModelInfo for HttpRequest {
@@ -1434,6 +1437,7 @@ impl UpsertModelInfo for HttpRequest {
             (SettingFollowRedirects, serde_json::to_string(&self.setting_follow_redirects)?.into()),
             (SettingRequestTimeout, serde_json::to_string(&self.setting_request_timeout)?.into()),
             (SettingHttpVersion, serde_json::to_string(&self.setting_http_version)?.into()),
+            (TestScript, self.test_script.into()),
         ])
     }
 
@@ -1459,6 +1463,7 @@ impl UpsertModelInfo for HttpRequest {
             SettingFollowRedirects,
             SettingRequestTimeout,
             SettingHttpVersion,
+            TestScript,
         ]
     }
 
@@ -1500,6 +1505,7 @@ impl UpsertModelInfo for HttpRequest {
             setting_request_timeout: serde_json::from_str(&setting_request_timeout)
                 .unwrap_or_default(),
             setting_http_version: serde_json::from_str(&setting_http_version).unwrap_or_default(),
+            test_script: row.get("test_script")?,
         })
     }
 }

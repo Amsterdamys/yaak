@@ -54,6 +54,7 @@ import { RequestMethodDropdown } from "./RequestMethodDropdown";
 import { countOverriddenSettings, ModelSettingsEditor } from "./ModelSettingsEditor";
 import { UrlBar } from "./UrlBar";
 import { UrlParametersEditor } from "./UrlParameterEditor";
+import { RequestTestsEditor } from "./requestTests/RequestTestsEditor";
 
 const GraphQLEditor = lazy(() =>
   import("./graphql/GraphQLEditor").then((m) => ({ default: m.GraphQLEditor })),
@@ -72,6 +73,7 @@ const TAB_HEADERS = "headers";
 const TAB_AUTH = "auth";
 const TAB_SETTINGS = "settings";
 const TAB_DESCRIPTION = "description";
+const TAB_TESTS = "tests"; // [shaman] CORE-452
 const TABS_STORAGE_KEY = "http_request_tabs";
 
 // Derived from the identity-stable URL list so this only recomputes when a URL
@@ -254,6 +256,11 @@ export function HttpRequestPane({ style, fullHeight, className, activeRequest }:
       },
       ...headersTab,
       ...authTab,
+      {
+        value: TAB_TESTS,
+        label: "Tests",
+        rightSlot: activeRequest.testScript.trim() !== "" && <CountBadge count={true} />,
+      },
       {
         value: TAB_SETTINGS,
         label: "Settings",
@@ -458,6 +465,9 @@ export function HttpRequestPane({ style, fullHeight, className, activeRequest }:
                   <EmptyStateText>No Body</EmptyStateText>
                 )}
               </ConfirmLargeRequestBody>
+            </TabContent>
+            <TabContent value={TAB_TESTS}>
+              <RequestTestsEditor request={activeRequest} />
             </TabContent>
             <TabContent value={TAB_DESCRIPTION}>
               <div className="grid grid-rows-[auto_minmax(0,1fr)] h-full">

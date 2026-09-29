@@ -31,6 +31,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { HttpResponseTimeline } from "./HttpResponseTimeline";
 import { RecentHttpResponsesDropdown } from "./RecentHttpResponsesDropdown";
 import { RequestBodyViewer } from "./RequestBodyViewer";
+import { TestResultsBadge, TestResultsViewer } from "./requestTests/TestResultsViewer";
 import { ResponseCookies } from "./ResponseCookies";
 import { ResponseHeaders } from "./ResponseHeaders";
 import { AudioViewer } from "./responseViewers/AudioViewer";
@@ -57,6 +58,7 @@ const TAB_REQUEST = "request";
 const TAB_HEADERS = "headers";
 const TAB_COOKIES = "cookies";
 const TAB_TIMELINE = "timeline";
+const TAB_TESTS = "tests"; // [shaman] CORE-452
 
 export type TimelineViewMode = "timeline" | "text";
 
@@ -152,6 +154,11 @@ export function HttpResponsePane({ style, className, activeRequestId }: Props) {
             { label: "Timeline (Text)", shortLabel: "Timeline", value: "text" },
           ],
         },
+      },
+      {
+        value: TAB_TESTS,
+        label: "Tests",
+        rightSlot: <TestResultsBadge responseId={activeResponse?.id ?? null} />,
       },
     ],
     [
@@ -348,6 +355,9 @@ export function HttpResponsePane({ style, className, activeRequestId }: Props) {
               </TabContent>
               <TabContent value={TAB_TIMELINE}>
                 <HttpResponseTimeline response={activeResponse} viewMode={timelineViewMode} />
+              </TabContent>
+              <TabContent value={TAB_TESTS}>
+                <TestResultsViewer response={activeResponse} />
               </TabContent>
             </Tabs>
           </div>
