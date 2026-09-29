@@ -22,10 +22,15 @@ export function hasTestScript(request: HttpRequest): boolean {
  */
 export function runTestsAfterSend(requestId: string, response: HttpResponse | null) {
   if (response == null) return;
-  const request = getModel("http_request", requestId);
-  if (request == null || !hasTestScript(request)) return;
-  if (jotaiStore.get(runTestsOnSendAtom)[requestId] === false) return;
-  runRequestTests(request, response).catch(console.error);
+  try {
+    const request = getModel("http_request", requestId);
+    if (request == null || !hasTestScript(request)) return;
+    if (jotaiStore.get(runTestsOnSendAtom)[requestId] === false) return;
+    runRequestTests(request, response).catch(console.error);
+  } catch (err) {
+    // A send must never fail because its tests could not start
+    console.error("Could not start the request's tests", err);
+  }
 }
 
 /** Run the request's script against the response and store the result for the Tests tab. */
