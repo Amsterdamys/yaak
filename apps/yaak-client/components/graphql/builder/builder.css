@@ -1,0 +1,65 @@
+/*
+ * Theme the vendored graphiql-explorer tree with Yaak's tokens. The component sets most of its
+ * look through inline styles, so the few hard-coded light-theme values (white backgrounds, grey
+ * borders) are overridden here with !important. Everything else comes through the `colors` and
+ * `styles` props in GraphQLQueryBuilder.tsx.
+ */
+
+.yaak-graphql-builder .graphiql-explorer-root {
+  font-family: var(--font-mono) !important;
+  font-size: var(--editor-font-size) !important;
+  color: var(--text);
+  padding: 0 !important;
+}
+
+.yaak-graphql-builder .graphiql-explorer-root > div > div[id] {
+  border-bottom-color: var(--borderSubtle) !important;
+}
+
+.yaak-graphql-builder .graphiql-explorer-root input,
+.yaak-graphql-builder .graphiql-explorer-root select {
+  background: transparent !important;
+  border-color: var(--border) !important;
+  font: inherit;
+  outline: none;
+}
+
+.yaak-graphql-builder .graphiql-explorer-root input:focus,
+.yaak-graphql-builder .graphiql-explorer-root select:focus {
+  border-color: var(--borderFocus) !important;
+}
+
+.yaak-graphql-builder .graphiql-explorer-root select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.yaak-graphql-builder .graphiql-explorer-root .graphiql-explorer-node > span:hover {
+  background: var(--surfaceHighlight);
+  border-radius: 0.25rem;
+}
+
+.yaak-graphql-builder .graphiql-explorer-root .toolbar-button {
+  color: var(--textSubtle);
+  cursor: pointer;
+}
+
+.yaak-graphql-builder .graphiql-explorer-root .toolbar-button:hover {
+  color: var(--text);
+}
+
+.yaak-graphql-builder .graphiql-explorer-actions {
+  border-top-color: var(--border) !important;
+  color: var(--textSubtle);
+  gap: 0.5rem;
+}
+
+.yaak-graphql-builder .graphiql-explorer-actions select {
+  color: var(--text);
+}
+
+/* Checkbox and arrow icons are Yaak <Icon> elements; keep them on the text baseline. */
+.yaak-graphql-builder .graphiql-explorer-root svg {
+  display: inline-block;
+  vertical-align: -0.2em;
+}

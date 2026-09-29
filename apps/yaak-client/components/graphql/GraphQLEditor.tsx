@@ -21,6 +21,7 @@ import { tryFormatGraphql } from "../../lib/formatters";
 import { parseGraphQLOperationNames } from "../../lib/graphqlOperationNames";
 import { normalizeGraphQLBody } from "../../lib/requestBodyConversion";
 import { revealInFinderText } from "../../lib/reveal";
+import { showGraphQLBuilderAtom } from "./builder/builderAtoms";
 import { showGraphQLDocExplorerAtom } from "./graphqlAtoms";
 
 type Props = Pick<EditorProps, "heightMode" | "className" | "forceUpdateKey"> & {
@@ -92,6 +93,8 @@ function GraphQLEditorInner({ request, onChange, baseRequest, ...extraEditorProp
 
   const [isDocOpenRecord, setGraphqlDocStateAtomValue] = useAtom(showGraphQLDocExplorerAtom);
   const isDocOpen = isDocOpenRecord[request.id] !== undefined;
+  const [isBuilderOpenRecord, setGraphqlBuilderStateAtomValue] = useAtom(showGraphQLBuilderAtom);
+  const isBuilderOpen = isBuilderOpenRecord[request.id] === true;
   const parsedOperationNames = useMemo(
     () => parseGraphQLOperationNames(currentBody.query),
     [currentBody.query],
@@ -351,8 +354,34 @@ function GraphQLEditorInner({ request, onChange, baseRequest, ...extraEditorProp
                 ...v,
                 [request.id]: isDocOpen ? undefined : null,
               }));
+              // One side panel at a time
+              setGraphqlBuilderStateAtomValue((v) => ({ ...v, [request.id]: undefined }));
             }}
           />
+      </div>,
+      // Click-to-build query tree, the Postman-style alternative to typing the query.
+      <div key="builder" className="opacity-100!">
+        <IconButton
+          size="sm"
+          variant="border"
+          icon="check_square_checked"
+          disabled={schema == null}
+          title={
+            schema == null
+              ? "Query builder unavailable without a schema"
+              : isBuilderOpen
+                ? "Hide Query Builder"
+                : "Show Query Builder"
+          }
+          onClick={() => {
+            setGraphqlBuilderStateAtomValue((v) => ({
+              ...v,
+              [request.id]: isBuilderOpen ? undefined : true,
+            }));
+            // One side panel at a time
+            setGraphqlDocStateAtomValue((v) => ({ ...v, [request.id]: undefined }));
+          }}
+        />
       </div>,
     ],
     [
@@ -362,6 +391,8 @@ function GraphQLEditorInner({ request, onChange, baseRequest, ...extraEditorProp
       currentBody.operationName,
       handleChangeOperationName,
       isDocOpen,
+      isBuilderOpen,
+      setGraphqlBuilderStateAtomValue,
       isLoading,
       operationNames,
       refetch,

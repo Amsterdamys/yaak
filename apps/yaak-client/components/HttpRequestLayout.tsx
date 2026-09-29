@@ -7,6 +7,8 @@ import type { CSSProperties } from "react";
 import { useCurrentGraphQLSchema } from "../hooks/useIntrospectGraphQL";
 import { activeWorkspaceAtom } from "../hooks/useActiveWorkspace";
 import { workspaceLayoutAtom } from "../lib/atoms";
+import { showGraphQLBuilderAtom } from "./graphql/builder/builderAtoms";
+import { GraphQLQueryBuilder } from "./graphql/builder/GraphQLQueryBuilder";
 import { GraphQLDocsExplorer } from "./graphql/GraphQLDocsExplorer";
 import { showGraphQLDocExplorerAtom } from "./graphql/graphqlAtoms";
 import { HttpRequestPane } from "./HttpRequestPane";
@@ -19,6 +21,7 @@ interface Props {
 
 export function HttpRequestLayout({ activeRequest, style }: Props) {
   const showGraphQLDocExplorer = useAtomValue(showGraphQLDocExplorerAtom);
+  const showGraphQLBuilder = useAtomValue(showGraphQLBuilderAtom);
   const graphQLSchema = useCurrentGraphQLSchema(activeRequest);
   const workspaceLayout = useAtomValue(workspaceLayoutAtom);
   const activeWorkspace = useAtomValue(activeWorkspaceAtom);
@@ -43,26 +46,39 @@ export function HttpRequestLayout({ activeRequest, style }: Props) {
     />
   );
 
-  if (
-    activeRequest.bodyType === "graphql" &&
-    showGraphQLDocExplorer[activeRequest.id] !== undefined &&
-    graphQLSchema != null
-  ) {
-    return (
-      <SplitLayout
-        storageKey={`graphql_layout::${wsId}`}
-        defaultRatio={1 / 3}
-        firstSlot={requestResponseSplit}
-        secondSlot={({ style, orientation }) => (
-          <GraphQLDocsExplorer
-            requestId={activeRequest.id}
-            schema={graphQLSchema}
-            className={classNames(orientation === "horizontal" && "ml-0!")}
-            style={style}
-          />
-        )}
-      />
-    );
+  if (activeRequest.bodyType === "graphql" && graphQLSchema != null) {
+    // One side panel at a time: the query builder or the docs explorer, sharing the split state.
+    const sidePanel =
+      showGraphQLBuilder[activeRequest.id] === true
+        ? ({ style, orientation }: SlotProps) => (
+            <GraphQLQueryBuilder
+              request={activeRequest}
+              schema={graphQLSchema}
+              className={classNames(orientation === "horizontal" && "ml-0!")}
+              style={style}
+            />
+          )
+        : showGraphQLDocExplorer[activeRequest.id] !== undefined
+          ? ({ style, orientation }: SlotProps) => (
+              <GraphQLDocsExplorer
+                requestId={activeRequest.id}
+                schema={graphQLSchema}
+                className={classNames(orientation === "horizontal" && "ml-0!")}
+                style={style}
+              />
+            )
+          : null;
+
+    if (sidePanel != null) {
+      return (
+        <SplitLayout
+          storageKey={`graphql_layout::${wsId}`}
+          defaultRatio={1 / 3}
+          firstSlot={requestResponseSplit}
+          secondSlot={sidePanel}
+        />
+      );
+    }
   }
 
   return requestResponseSplit({ style });
