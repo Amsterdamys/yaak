@@ -19,6 +19,7 @@ import { IconButton } from "./core/IconButton";
 import { Separator } from "./core/Separator";
 import { SizeTag } from "./core/SizeTag";
 import { HttpResponsePane } from "./HttpResponsePane";
+import { FolderTestResults } from "./requestTests/FolderTestResults"; // [shaman] CORE-452
 
 interface Props {
   folder: Folder;
@@ -64,6 +65,7 @@ export function FolderLayout({ folder, style }: Props) {
         </HStack>
       </HStack>
       <Separator className="mt-3 mb-8" />
+      <FolderTestResults folder={folder} /> {/* [shaman] CORE-452 */}
       <div className="grid grid-cols-1 @lg:grid-cols-2 @4xl:grid-cols-3 gap-4 min-w-0">
         {children.map((child) => (
           <ChildCard key={child.id} child={child} />

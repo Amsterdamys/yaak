@@ -93,16 +93,27 @@ it is synced to the workspace YAML like everything else and shows in git diffs.
   are applied to the environments when the script ends. `pm.sendRequest`, `pm.cookies` and
   `pm.execution` throw a message saying they are not available. Scripts run in a Web Worker
   created per run and stopped after 10 seconds.
-- **Runs**: after every send, from the single send function, unless the request's
-  "Run on send" switch is off (stored per request in the local key-value store). "Run" in the
-  Tests tab re-runs against the last response without sending.
+- **Runs**: whenever a response finishes, however it was sent. The client hooks the model
+  writes (`components/requestTests/init.ts`), not the Send button: the final write of an
+  `http_response` with state `closed` runs its request's script, once, unless the request's
+  "Run on send" switch is off (stored per request in the local key-value store). This is what
+  covers the folder's "Send All", which is a bundled plugin sending from the Rust side, the
+  sidebar's multi-select send and plugin sends. A response another window sent is that
+  window's job. "Run" in the Tests tab re-runs against the last response without sending.
+- **Folder report**: the folder page lists every request under it that has tests with the
+  result of its latest response and the totals, filling in live while "Send All" runs, with
+  "Run all tests" to re-run them all against the latest responses. Rows open the request's
+  results. Folders without tests show nothing extra.
 - **Results**: a "Tests" tab in the response pane with the passed/total badge, a
   passed/failed/skipped filter, Chai's failure messages, console output and a re-run button.
 
 Upstream files touched, each by a few lines: `crates/yaak-models/src/models.rs` (the field),
 the generated `bindings/gen_models.ts` copies, `components/HttpRequestPane.tsx` (the tab),
-`components/HttpResponsePane.tsx` (the results tab), `hooks/useSendAnyHttpRequest.ts` (the
-run after a send) and `apps/yaak-client/package.json` (chai, ajv). Everything else is new
+`components/HttpResponsePane.tsx` (the results tab), `components/FolderLayout.tsx` (the
+report), `main.tsx` (the startup hook), `vite.config.ts` (`optimizeDeps.include` for chai and
+ajv: the worker is their only importer, and left to discovery the dev server re-optimizes and
+reloads the page on the first run, which loses that run) and `apps/yaak-client/package.json`
+(chai, ajv). Everything else is new
 under `apps/yaak-client/components/requestTests/`. Upstream has a `plan/test-assertions-ci`
 branch with a different, declarative assertions model; if it lands, the two coexist until we
 decide which to keep.
